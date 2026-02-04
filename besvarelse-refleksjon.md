@@ -10,7 +10,7 @@ Skriv dine svar på refleksjonsspørsmålene fra hver oppgave her.
 
 **Ditt svar:**
 
-[Skriv ditt svar her]
+Docker er et program som holder til seg slev, mens PostgreSQL sprer seg til adnre filler så når du sletter den fins det forsat deller av den på pc din. vi spiller ogås versjon konfilkter siden i PostgreSQ L må det være samme versjon. Docker er universal så du kan jobbe med folk som er på Linux mac eller/og windows uten at det skejer "men det funker på min PC". interface på Docker er universlal og enklere 
 
 ---
 
