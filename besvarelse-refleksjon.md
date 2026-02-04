@@ -124,7 +124,7 @@ Filtrere tidlig: Sørge for at WHERE-klausulen min snevrer inn datamengden så t
 
 **Ditt svar:**
 
-[Skriv ditt svar her]
+prinsippet om minst rettighet er en bruker, et program eller en prosess skal kun ha tilgang til de dataene og funksjonene som er absolutt nødvendige for å få gjort jobben sin. Hverken mer eller mindre. . dette er viktig siden man hvil ikek at alle kan gjøre alt men heller beste gruppe folk har speseile roller 
 
 ---
 
@@ -132,7 +132,7 @@ Filtrere tidlig: Sørge for at WHERE-klausulen min snevrer inn datamengden så t
 
 **Ditt svar:**
 
-[Skriv ditt svar her]
+Teknisk sett er det ingen forskjell. I PostgreSQL er alt en Rolle (Role). For PostgreSQL er en "User" bare en "Rolle som tilfeldigvis har nøkkelkortet til inngangsdøra". Du kan når som helst ta en rolle og gi den LOGIN-rettighet, og vips, så er det en bruker.
 
 ---
 
@@ -140,7 +140,7 @@ Filtrere tidlig: Sørge for at WHERE-klausulen min snevrer inn datamengden så t
 
 **Ditt svar:**
 
-[Skriv ditt svar her]
+siden da man må gå bruker og bruker og om man er en skole så må man gi vær lærer indivuelt rolle. men med roller kan man gi alle lærerne på en gang og om man skal bytte på noe så må du på alle lærene isteded for bare bytte på rollen 
 
 ---
 
@@ -148,7 +148,7 @@ Filtrere tidlig: Sørge for at WHERE-klausulen min snevrer inn datamengden så t
 
 **Ditt svar:**
 
-[Skriv ditt svar her]
+Å gi en bruker DROP-rettighet er i praksis det samme som å gi dem en slette-knapp for selve infrastrukturen i databasen. Det er en av de farligste rettighetene man kan dele ut. siden den sakper en stor sikkerhetsproblemer siden da kan noen ta rollen og slette flere brukere som kan lede til Total Dataødeleggelse
 
 ---
 
@@ -156,33 +156,123 @@ Filtrere tidlig: Sørge for at WHERE-klausulen min snevrer inn datamengden så t
 
 **Ditt svar:**
 
-[Skriv ditt svar her]
+For å sikre at en student kun får se sine egne karakterer, ville jeg implementert dette så nær dataene som mulig for å sikre dataintegriteten. Jeg ville vurdert to metoder i PostgreSQL:
+
+1. Row-Level Security (RLS) – Den mest robuste metoden: Dette er den foretrukne løsningen i moderne PostgreSQL. Jeg ville aktivert RLS på tabellen emneregistreringer.
+
+   Hvordan: Jeg oppretter en sikkerhetspolicy (CREATE POLICY) som sjekker om den innloggede brukeren matcher studenten i raden.
+
+   Logikk: USING (student_brukernavn = current_user).
+
+   Fordel: Databasen håndhever regelen automatisk uansett hvilken spørring som kjøres. Selv SELECT * FROM emneregistreringer vil kun returnere studentens egne rader.
+
+2. Bruk av Views (Alternativ metode): Hvis RLS ikke er tilgjengelig, ville jeg opprettet et View som fungerer som et filter.
+
+   Hvordan: CREATE VIEW mine_karakterer AS SELECT * FROM emneregistreringer WHERE student_id = (SELECT id FROM studenter WHERE brukernavn = current_user);
+
+   Tilgang: Jeg gir studenten tilgang (GRANT SELECT) kun til dette viewet, og ikke til selve hovedtabellen.
 
 ---
 
 ## Notater og observasjoner
-
+OPPGAVE 3 DEL 2
 Bruk denne delen til å dokumentere interessante funn, problemer du møtte, eller andre observasjoner:
+```sql
+data1500_db=> docker-compose exec postgres psql -U foreleser_role -d data1500_db 
+data1500_db-> foreleser_pass
+data1500_db-> -- Skal fungere (SELECT)
+data1500_db-> SELECT * FROM studenter;
+ERROR:  syntax error at or near "docker"
+LINE 1: docker-compose exec postgres psql -U foreleser_role -d data1...
+        ^
+data1500_db=> 
+data1500_db=> -- Skal fungere (INSERT)
+data1500_db=> INSERT INTO studenter (fornavn, etternavn, epost, program_id) 
+data1500_db-> VALUES ('Test', 'Bruker', 'test@example.com', 1);
+INSERT 0 1
+data1500_db=> 
+data1500_db=> -- Skal IKKE fungere (DELETE)
+data1500_db=> DELETE FROM studenter WHERE student_id = 1;
+ERROR:  permission denied for table studenter
+data1500_db=> 
+```
 
-[Skriv dine notater her]
+Jeg forsøkte å utføre SELECT, INSERT og DELETE med brukeren foreleser_role.
 
+SELECT: Fungerte som forventet (fikk lest data).
+
+INSERT: Kommandoen INSERT INTO studenter... ga resultatet INSERT 0 1. Dette bekrefter at foreleseren har skrivetilgang og kan opprette nye studenter.
+
+DELETE: Kommandoen DELETE FROM studenter... ga feilmeldingen ERROR: permission denied for table studenter. Dette bekrefter at foreleser-rollen fungerer etter prinsippet om minste rettighet; brukeren har ikke slettetilgang, noe som hindrer utilsiktet tap av data.
+
+OPPGAVE 3 DEL 3
+```sql
+data1500_db=> SELECT * FROM studenter;
+ student_id | fornavn | etternavn |              epost               | program_id |         opprettet          
+------------+---------+-----------+----------------------------------+------------+----------------------------
+          1 | Ola     | Nordmann  | ola.nordmann@student.oslomet.no  |          1 | 2026-01-22 10:20:56.462972
+          2 | Kari    | Normann   | kari.normann@student.oslomet.no  |          1 | 2026-01-22 10:20:56.462972
+          3 | Per     | Larsen    | per.larsen@student.oslomet.no    |          2 | 2026-01-22 10:20:56.462972
+          4 | Anna    | Johansen  | anna.johansen@student.oslomet.no |          3 | 2026-01-22 10:20:56.462972
+          5 | Test    | Bruker    | test@example.com                 |          1 | 2026-02-04 13:14:36.402025
+(5 rows)
+
+data1500_db=> 
+data1500_db=> -- Skal IKKE fungere (INSERT)
+data1500_db=> INSERT INTO studenter (fornavn, etternavn, epost, program_id) 
+data1500_db-> VALUES ('Test', 'Bruker', 'test@example.com', 1);
+ERROR:  permission denied for table studenter
+data1500_db=> 
+data1500_db=> -- Skal IKKE fungere (UPDATE)
+data1500_db=> UPDATE studenter SET fornavn = 'Ola' WHERE student_id = 1;
+ERROR:  permission denied for table studenter
+```
+Jeg koblet til databasen med brukeren student_role for å verifisere tilgangsnivået.
+
+Lesetilgang (SELECT): Kommandoen kjørte vellykket og returnerte listen over studenter. Dette bekrefter at rollen har leserettigheter.
+
+Skrivetilgang (INSERT): Kommandoen ble avvist av databasen med feilmeldingen ERROR: permission denied for table studenter.
+
+Endringstilgang (UPDATE): Kommandoen ble også avvist med permission denied.
+
+Konklusjon: Testen bekrefter at student_role er korrekt begrenset til kun å lese data. Studenten har ingen mulighet til å endre eller slette informasjon i databasen, noe som oppfyller kravet om begrenset tilgang.
 
 ## Oppgave 4: Brukeradministrasjon og GRANT
 
 1. **Hva er Row-Level Security og hvorfor er det viktig?**
-   - Svar her...
+   - Row-Level Security (RLS) er en sikkerhetsmekanisme i databasen som filtrerer hvilke rader en bruker har lov til å se eller endre i en tabell. I stedet for at tilgang enten er "alt eller ingenting", sjekkes hver enkelt rad mot et regelsett (Policy) når en spørring kjøres.
+
+Det er viktig fordi:
+
+Dataminimering (GDPR): Det sikrer at brukere kun ser dataene de absolutt trenger.
+
+Sikkerhet i dybden: Selv om applikasjonen (nettsiden) glemmer å filtrere dataene i SQL-spørringen (f.eks. WHERE student_id = ...), vil databasen automatisk skjule radene som brukeren ikke skal se. Det fungerer som et siste sikkerhetsnett.
 
 2. **Hva er forskjellen mellom RLS og kolonnebegrenset tilgang?**
-   - Svar her...
+   - Forskjellen ligger i hvilken "retning" man kutter tilgangen i tabellen:
+
+RLS (Horisontal filtrering): Begrenser hvilke rader (oppføringer) man ser.
+
+Eksempel: En student ser kun sine egne rader, men ser alle feltene i de radene.
+
+Kolonnebegrenset tilgang (Vertikal filtrering): Begrenser hvilke felter (kolonner) man ser.
+
+Eksempel: En student kan se navnet til medstudenter, men personnummer-kolonnen er skjult eller nullstilt.
 
 3. **Hvordan ville du implementert at en student bare kan se karakterer for sitt eget program?**
-   - Svar her...
+   - For å løse dette må RLS-policyen sjekke en kobling mellom tabellene. Policyen må verifisere at program_id til den innloggede studenten matcher program_id til studenten som eier karakteren.
 
 4. **Hva er sikkerhetsproblemene ved å bruke views i stedet for RLS?**
-   - Svar her...
+   - Hovedproblemet med Views er at sikkerheten ikke er knyttet til selve dataene, men til "vinduet" man ser gjennom.
 
 5. **Hvordan ville du testet at RLS-policyer fungerer korrekt?**
-   - Svar her...
+   - Testing av RLS krever at man simulerer de ulike brukerrollene. Jeg ville utført to typer tester:
+
+Positiv testing: Logg inn som en student (f.eks. "Student A") og verifiser at du får opp dine egne karakterer (SELECT count(*) ... skal være > 0).
+
+Negativ testing (Viktigst): Logg inn som "Student A" og prøv eksplisitt å hente karakterene til "Student B" ved å bruke WHERE student_id = [Student B sin ID]. Resultatet skal være 0 rader eller "Permission denied".
+
+Sjekk admin: Verifiser at en admin-bruker eller foreleser fortsatt ser alle dataene, slik at systemet ikke har låst ute de som skal ha full tilgang.
 
 ---
 
